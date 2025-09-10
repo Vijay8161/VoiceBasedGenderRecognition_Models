@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints
+
+# OS / tooling
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Data & model files 
+data/
+datasets/
+models/
+checkpoints/
