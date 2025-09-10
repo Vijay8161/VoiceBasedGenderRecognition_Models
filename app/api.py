@@ -12,7 +12,7 @@ from app.model3 import FinalModel3
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173","https://voice-based-gender-recognition-ui.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
