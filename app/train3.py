@@ -147,11 +147,19 @@ if __name__ == "__main__":
     #     'normalized_reg.npz',
     #     'normalized_aug.npz',
     # ]
-    data_dir = r"C:\Users\vijay\DLProj\data"
+    # data_dir = r"C:\Users\vijay\DLProj\data"
+    # file_paths = [
+    #     os.path.join(data_dir, 'normalized_reg.npz'),
+    #     os.path.join(data_dir, 'normalized_aug.npz')
+    # ]
+    # Get the absolute path of the current script's directory
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(BASE_DIR, "data")
     file_paths = [
-        os.path.join(data_dir, 'normalized_reg.npz'),
-        os.path.join(data_dir, 'normalized_aug.npz')
+        os.path.join(data_dir, "normalized_reg.npz"),
+        os.path.join(data_dir, "normalized_aug.npz")
     ]
+
     X, y = load_data(file_paths)
     y = preprocess_labels(y)
 

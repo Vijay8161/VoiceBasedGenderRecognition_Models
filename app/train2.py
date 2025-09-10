@@ -178,11 +178,20 @@ if __name__ == "__main__":
     os.makedirs('model_2_checkpoints', exist_ok=True) 
 
     # file_paths = ['normalized_reg.npz', 'normalized_aug.npz'] 
-    data_dir = r"C:\Users\vijay\DLProj\data"
+    # data_dir = r"C:\Users\vijay\DLProj\data"
+    # file_paths = [
+    #     os.path.join(data_dir, 'normalized_reg.npz'),
+    #     os.path.join(data_dir, 'normalized_aug.npz')
+    # ]
+    # relative to repo root (DLProj)
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # folder of this script
+    data_dir = os.path.join(BASE_DIR, "data")
+
     file_paths = [
-        os.path.join(data_dir, 'normalized_reg.npz'),
-        os.path.join(data_dir, 'normalized_aug.npz')
+        os.path.join(data_dir, "normalized_reg.npz"),
+        os.path.join(data_dir, "normalized_aug.npz")
     ]
+
     X, y = load_data(file_paths)
     y = preprocess_labels(y)
 

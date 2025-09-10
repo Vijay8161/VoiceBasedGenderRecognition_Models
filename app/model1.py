@@ -9,19 +9,21 @@ from tqdm import tqdm
 import os
 import matplotlib.pyplot as plt
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def load_data(file_paths):
     all_X = []
     all_y = []
     for file_path in file_paths:
         data = np.load(file_path)
-        all_X.append(data['X'])
-        all_y.append(data['y'])
-    
+        all_X.append(data["X"])
+        all_y.append(data["y"])
+
     X = np.concatenate(all_X, axis=0)
     y = np.concatenate(all_y, axis=0)
     return X, y
+
 
 class AudioDataset(torch.utils.data.Dataset):
     def __init__(self, X, y, augment=False):
@@ -37,10 +39,11 @@ class AudioDataset(torch.utils.data.Dataset):
         y = self.y[idx]
 
         if self.augment:
-            noise = torch.randn_like(x) * 0.1  
+            noise = torch.randn_like(x) * 0.1
             x += noise
 
         return x, y
+
 
 class AttentionLayer(nn.Module):
     def __init__(self, input_dim):
@@ -55,19 +58,22 @@ class AttentionLayer(nn.Module):
         weighted_sum = torch.bmm(weights, x).squeeze(1)
         return weighted_sum, weights
 
+
 class HybridModel(nn.Module):
     def __init__(self, input_dim, lstm_hidden_dim, transformer_dim, dropout=0.5):
         super(HybridModel, self).__init__()
         self.lstm = nn.LSTM(input_dim, lstm_hidden_dim, batch_first=True)
         self.attention = AttentionLayer(lstm_hidden_dim)
         self.transformer = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=transformer_dim, nhead=4, dropout=dropout, batch_first=True),
-            num_layers=2
+            nn.TransformerEncoderLayer(
+                d_model=transformer_dim, nhead=4, dropout=dropout, batch_first=True
+            ),
+            num_layers=2,
         )
         self.fc = nn.Sequential(
             nn.Dropout(dropout),
             nn.Linear(transformer_dim, 1),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -77,26 +83,34 @@ class HybridModel(nn.Module):
         output = self.fc(transformer_out)
         return output
 
+
 def save_checkpoint(model, optimizer, epoch, loss, filepath):
-    torch.save({
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': loss,
-    }, filepath)
+    torch.save(
+        {
+            "epoch": epoch,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "loss": loss,
+        },
+        filepath,
+    )
+
 
 def load_checkpoint(model, optimizer, filepath):
     if os.path.exists(filepath):
         checkpoint = torch.load(filepath)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        start_epoch = checkpoint['epoch'] + 1
-        loss = checkpoint['loss']
-        print(f"Checkpoint loaded. Resuming from epoch {start_epoch} with loss {loss}.")
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        start_epoch = checkpoint["epoch"] + 1
+        loss = checkpoint["loss"]
+        print(
+            f"Checkpoint loaded. Resuming from epoch {start_epoch} with loss {loss}."
+        )
     else:
         start_epoch = 0
         print("No checkpoint found. Starting training from scratch.")
     return model, optimizer, start_epoch
+
 
 def compute_metrics(y_true, y_pred):
     y_pred_labels = (y_pred > 0.5).astype(np.float32)
@@ -106,13 +120,14 @@ def compute_metrics(y_true, y_pred):
     f1 = f1_score(y_true, y_pred_labels, zero_division=0)
     return accuracy, precision, recall, f1
 
+
 def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs, save_path):
-    best_val_loss = float('inf')
-    current_checkpoint_path = os.path.join(save_path, 'current_model.pth')
-    best_checkpoint_path = os.path.join(save_path, 'best_model.pth')
+    best_val_loss = float("inf")
+    current_checkpoint_path = os.path.join(save_path, "current_model.pth")
+    best_checkpoint_path = os.path.join(save_path, "best_model.pth")
 
     model, optimizer, start_epoch = load_checkpoint(model, optimizer, current_checkpoint_path)
-    
+
     train_losses = []
     val_losses = []
 
@@ -121,7 +136,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         train_loss = 0.0
         all_train_labels = []
         all_train_preds = []
-        with tqdm(train_loader, desc=f'Epoch {epoch+1}/{num_epochs} - Training') as progress:
+        with tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} - Training") as progress:
             for inputs, labels in progress:
                 inputs, labels = inputs.to(device), labels.to(device).unsqueeze(1)
                 optimizer.zero_grad()
@@ -148,7 +163,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         all_val_labels = []
         all_val_preds = []
         with torch.no_grad():
-            with tqdm(val_loader, desc=f'Epoch {epoch+1}/{num_epochs} - Validation') as progress:
+            with tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} - Validation") as progress:
                 for inputs, labels in progress:
                     inputs, labels = inputs.to(device), labels.to(device).unsqueeze(1)
                     outputs = model(inputs)
@@ -171,41 +186,44 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
             best_val_loss = val_loss
             save_checkpoint(model, optimizer, epoch, best_val_loss, best_checkpoint_path)
 
-        print(f"\nEpoch {epoch+1}/{num_epochs}")
-        print(f"Train Loss: {epoch_train_loss:.4f}, Train Acc: {train_accuracy:.4f}, "
-              f"Train Precision: {train_precision:.4f}, Train Recall: {train_recall:.4f}, Train F1: {train_f1:.4f}")
-        print(f"Val Loss: {epoch_val_loss:.4f}, Val Acc: {val_accuracy:.4f}, "
-              f"Val Precision: {val_precision:.4f}, Val Recall: {val_recall:.4f}, Val F1: {val_f1:.4f}, Best Val Loss: {best_val_loss:.4f}\n")
+        print(
+            f"\nEpoch {epoch+1}/{num_epochs}"
+            f"\nTrain Loss: {epoch_train_loss:.4f}, Train Acc: {train_accuracy:.4f}, "
+            f"Train Precision: {train_precision:.4f}, Train Recall: {train_recall:.4f}, Train F1: {train_f1:.4f}"
+            f"\nVal Loss: {epoch_val_loss:.4f}, Val Acc: {val_accuracy:.4f}, "
+            f"Val Precision: {val_precision:.4f}, Val Recall: {val_recall:.4f}, Val F1: {val_f1:.4f}, Best Val Loss: {best_val_loss:.4f}\n"
+        )
 
     plt.figure(figsize=(10, 5))
-    plt.plot(train_losses, label='Train Loss')
-    plt.plot(val_losses, label='Validation Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.title('Training and Validation Losses')
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(val_losses, label="Validation Loss")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Losses")
     plt.legend()
     plt.grid()
-    plt.savefig(os.path.join(save_path, 'loss_plot.png'))
+    plt.savefig(os.path.join(save_path, "loss_plot.png"))
     plt.show()
 
+
 def main():
-    os.makedirs('model_checkpoints', exist_ok=True)
+    # -------------------------
+    # Base directory (project root)
+    # -------------------------
+    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(PROJECT_ROOT, "data")
+    save_dir = os.path.join(PROJECT_ROOT, "model_checkpoints")
 
-    # file_paths = ['normalized_reg.npz', 'normalized_aug.npz']
-    data_dir = r"C:\Users\vijay\DLProj\data"
+    os.makedirs(save_dir, exist_ok=True)
+
     file_paths = [
-        os.path.join(data_dir, 'normalized_reg.npz'),
-        os.path.join(data_dir, 'normalized_aug.npz')
+        os.path.join(data_dir, "normalized_reg.npz"),
+        os.path.join(data_dir, "normalized_aug.npz"),
     ]
-
-    # file_paths = [
-    #     os.path.join('..', 'data', 'normalized_reg.npz'),
-    #     os.path.join('..', 'data', 'normalized_aug.npz')
-    # ]
 
     X, y = load_data(file_paths)
     epsilon = 1e-8
-    X = (X - np.mean(X, axis=0)) / (np.std(X, axis=0)+epsilon)
+    X = (X - np.mean(X, axis=0)) / (np.std(X, axis=0) + epsilon)
 
     dataset = AudioDataset(X, y, augment=True)
     train_size = int(0.8 * len(dataset))
@@ -215,11 +233,14 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=75, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=75, shuffle=False)
 
-    model = HybridModel(input_dim=X.shape[1], lstm_hidden_dim=64, transformer_dim=64, dropout=0.6).to(device)
+    model = HybridModel(
+        input_dim=X.shape[1], lstm_hidden_dim=64, transformer_dim=64, dropout=0.6
+    ).to(device)
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
 
-    train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=7, save_path='model_checkpoints')
+    train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=7, save_path=save_dir)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
